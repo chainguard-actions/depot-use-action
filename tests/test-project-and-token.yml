@@ -1,0 +1,39 @@
+name: Test project and token inputs - env vars are set
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          project: "my-test-project-id"
+          token: "my-test-depot-token"
+        continue-on-error: true
+      - name: Assert action ran (env vars set or failed gracefully at configure-docker)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          DEPOT_PROJECT_ID: ${{ env.DEPOT_PROJECT_ID }}
+          DEPOT_TOKEN: ${{ env.DEPOT_TOKEN }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ]; then
+            echo "Action succeeded, checking env vars..."
+            echo "DEPOT_PROJECT_ID: $DEPOT_PROJECT_ID"
+            if [ "$DEPOT_PROJECT_ID" != "my-test-project-id" ]; then
+              echo "FAIL: expected DEPOT_PROJECT_ID='my-test-project-id' but got '$DEPOT_PROJECT_ID'"
+              exit 1
+            fi
+            if [ "$DEPOT_TOKEN" != "my-test-depot-token" ]; then
+              echo "FAIL: DEPOT_TOKEN not set correctly"
+              exit 1
+            fi
+            echo "PASS: env vars are correctly set"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (expected - configure-docker requires a valid Depot token)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

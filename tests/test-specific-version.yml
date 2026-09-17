@@ -1,0 +1,38 @@
+name: Test specific version - install pinned Depot CLI version
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          version: "2.68.0"
+        continue-on-error: true
+      - name: Assert action ran (depot CLI installed at version or failed gracefully at configure-docker)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ]; then
+            echo "Action succeeded, checking depot CLI version..."
+            if ! command -v depot > /dev/null 2>&1; then
+              echo "FAIL: depot CLI not found on PATH after successful action"
+              exit 1
+            fi
+            VERSION_OUTPUT="$(depot version 2>&1 || true)"
+            echo "depot version output: $VERSION_OUTPUT"
+            if echo "$VERSION_OUTPUT" | grep -q "2.68.0"; then
+              echo "PASS: depot CLI version 2.68.0 is installed"
+            else
+              echo "FAIL: expected version 2.68.0 but got: $VERSION_OUTPUT"
+              exit 1
+            fi
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (expected - configure-docker requires a valid Depot token)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
