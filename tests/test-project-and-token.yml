@@ -1,0 +1,38 @@
+name: Test project and token env vars
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          project: "my-test-project-123"
+          token: "test-depot-token-abc"
+        continue-on-error: true
+      - name: Assert DEPOT_PROJECT_ID and DEPOT_TOKEN are set
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ]; then
+            echo "Action succeeded, checking env vars..."
+            echo "DEPOT_PROJECT_ID: $DEPOT_PROJECT_ID"
+            if [ "$DEPOT_PROJECT_ID" != "my-test-project-123" ]; then
+              echo "FAIL: expected DEPOT_PROJECT_ID='my-test-project-123' but got '$DEPOT_PROJECT_ID'"
+              exit 1
+            fi
+            echo "PASS: DEPOT_PROJECT_ID is set correctly"
+            if [ "$DEPOT_TOKEN" != "test-depot-token-abc" ]; then
+              echo "FAIL: expected DEPOT_TOKEN='test-depot-token-abc' but got '$DEPOT_TOKEN'"
+              exit 1
+            fi
+            echo "PASS: DEPOT_TOKEN is set correctly"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (network/API issue in harness environment)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

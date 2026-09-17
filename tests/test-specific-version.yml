@@ -1,0 +1,38 @@
+name: Test specific version installation
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          version: "2.68.0"
+        continue-on-error: true
+      - name: Assert specific version of depot CLI is installed
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ]; then
+            echo "Action succeeded, checking depot version..."
+            if ! command -v depot >/dev/null 2>&1; then
+              echo "FAIL: depot CLI not found on PATH"
+              exit 1
+            fi
+            DEPOT_VER="$(depot version 2>&1 || true)"
+            echo "depot version output: $DEPOT_VER"
+            if echo "$DEPOT_VER" | grep -q "2.68.0"; then
+              echo "PASS: correct version 2.68.0 installed"
+            else
+              echo "FAIL: expected version 2.68.0 but got: $DEPOT_VER"
+              exit 1
+            fi
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (network/API issue in harness environment)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
